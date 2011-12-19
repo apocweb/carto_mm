@@ -17,14 +17,18 @@ for row in reader:
 	h = row['hostname']
 	i = row['instance']
 	a = row['application']
-	x = row['xmx']
+	x = int(row['xmx'])
 	if not h in servers:
 		servers[h] = {}
-		servers[h][i] = [a]
+		servers[h][i] = {}
+		servers[h][i]['xmx'] = x
+		servers[h][i]['application'] = [a]
 	elif not i in servers[h]:
-		servers[h][i] = [a]
+		servers[h][i] = {}
+		servers[h][i]['xmx'] = x
+		servers[h][i]['application'] = [a] 
 	else:
-		servers[h][i].append(a)
+		servers[h][i]['application'].append(a)
 f_app.close()
 
 clusters = {}
@@ -50,8 +54,23 @@ for cluster in clusters:
 		for tomcat in clusters[cluster][host]:
 			#fo.write('\t\t\tsubgraph "cluster-' + tomcat + '" {\n')
 			#fo.write('\t\t\t\tlabel="{}"\n'.format(tomcat))
-			fo.write('\t\t\t"{}-{}" [shape=box,color=lightgrey,style=filled,label="{}"]\n'.format(host,tomcat,tomcat))
-			for application in clusters[cluster][host][tomcat]:
+			xmx = clusters[cluster][host][tomcat]['xmx']
+			if xmx == -1:
+				color = 'plum'
+			elif xmx == -2:
+				color = 'lightgrey'
+			else:
+				xmx /= 1000000
+			if xmx >= 0 and xmx <= 512:
+				color = 'skyblue' 
+			elif xmx > 512 and xmx <= 1024:
+				color = 'mediumseagreen'
+			elif xmx > 1024 and xmx <= 2048:
+				color = 'gold'
+			elif xmx > 2048:
+				color = 'coral'
+			fo.write('\t\t\t"{}-{}" [shape=box,color={},style=filled,label="{}"]\n'.format(host,tomcat,color,tomcat))
+			for application in clusters[cluster][host][tomcat]['application']:
 				if application != '':
 					fo.write('\t\t\t\t"{}-{}-{}" [label="{}"]\n'.format(host,tomcat,application,application))
 					fo.write('\t\t\t\t"{}-{}"--"{}-{}-{}"\n'.format(host,tomcat,host,tomcat,application))
