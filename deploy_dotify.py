@@ -52,29 +52,26 @@ for cluster in clusters:
 		fo.write('\t\tsubgraph "cluster-' + host + '" {\n')
 		fo.write('\t\t\tlabel="{}"\n'.format(host))
 		for tomcat in clusters[cluster][host]:
-			#fo.write('\t\t\tsubgraph "cluster-' + tomcat + '" {\n')
-			#fo.write('\t\t\t\tlabel="{}"\n'.format(tomcat))
 			xmx = clusters[cluster][host][tomcat]['xmx']
 			if xmx == -1:
-				color = 'plum'
+				instanceStatus = 'noXmx'
 			elif xmx == -2:
-				color = 'lightgrey'
+				instanceStatus = 'notStarted'
 			else:
 				xmx /= 1000000
 			if xmx >= 0 and xmx <= 512:
-				color = 'skyblue' 
+				instanceStatus = 'lowXmx'
 			elif xmx > 512 and xmx <= 1024:
-				color = 'mediumseagreen'
+                                instanceStatus = 'mediumXmx'
 			elif xmx > 1024 and xmx <= 2048:
-				color = 'gold'
+                                instanceStatus = 'highXmx'
 			elif xmx > 2048:
-				color = 'coral'
-			fo.write('\t\t\t"{}-{}" [shape=box,color={},style=filled,label="{}"]\n'.format(host,tomcat,color,tomcat))
+                                instanceStatus = 'veryHighXmx'
+			fo.write('\t\t\t"{}-{}" [label="{}",type=tomcatInstance,status={}]\n'.format(host,tomcat,tomcat,instanceStatus))
 			for application in clusters[cluster][host][tomcat]['application']:
 				if application != '':
-					fo.write('\t\t\t\t"{}-{}-{}" [label="{}"]\n'.format(host,tomcat,application,application))
+					fo.write('\t\t\t\t"{}-{}-{}" [label="{}",type=app,status={}]\n'.format(host,tomcat,application,application,instanceStatus))
 					fo.write('\t\t\t\t"{}-{}"--"{}-{}-{}"\n'.format(host,tomcat,host,tomcat,application))
-			#fo.write('\t\t\t}\n')
 		fo.write('\t\t}\n')
 	fo.write('\t}\n')
 fo.write('}\n')
