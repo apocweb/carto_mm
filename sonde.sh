@@ -138,27 +138,32 @@ get_sfr_tomcat_conf()
             fi
 
             ## Getting deployed WEB APPS
-            FILEPATH="/usr/local/tomcat-instances/${instance}/conf/server.xml"
-            if [ -f $FILEPATH ]; then
-              #Put the comment tags on its own line
-	      cat $FILEPATH |sed 's/<!--/\n<!--\n/g;s/-->/\n-->\n/' > $tmp2
-              #Deletes multi-line comments
-	      cat $tmp2 | awk 'BEGIN {toprint=1}
-              /<!--/ {toprint=0}
-	      /-->/ {restart_print=1}
-	      toprint==1 {print $0}
-	      restart_print==1 {restart_print=0;toprint=1}' > $tmp
-              #Grep context path lines (that are not "ROOT")
-              xmllint --format $tmp |grep '<Context ' |grep -v ROOT > $tmp2 2> /dev/null
-              #cat $FILEPATH |grep '<Context ' |grep -v ROOT |grep -v '<!--' > $tmp2 2> /dev/null
-              #Cleaning path
-              cat $tmp2 |sed 's/.* docBase="//'|sed 's/".*//'|sed 's/${htdocs}\///'|sed 's/${htdocs}//'|sed 's/\/usr\/local\/applications\///' > $tmp
-              node Webapp
+            node Webapp
+            TRY_PATH="/usr/local/tomcat-instances/${instance}/conf/server.xml"
+            for p in $(find /usr/local/tomcat-instances/${instance}/conf/Catalina/ -name "*.xml" 2> /dev/null); do
+              TRY_PATH="${TRY_PATH} $p"
+	    done
+            for FILEPATH in $TRY_PATH; do
+              if [ -f $FILEPATH ]; then
+                #Put the comment tags on its own line
+  	        cat $FILEPATH |sed 's/<!--/\n<!--\n/g;s/-->/\n-->\n/' > $tmp2
+                #Deletes multi-line comments
+	        cat $tmp2 | awk 'BEGIN {toprint=1}
+                /<!--/ {toprint=0}
+	        /-->/ {restart_print=1}
+	        toprint==1 {print $0}
+	        restart_print==1 {restart_print=0;toprint=1}' > $tmp
+                #Grep context path lines (that are not "ROOT")
+                xmllint --format $tmp |grep '<Context ' | grep docBase |grep -v ROOT > $tmp2 2> /dev/null
+                #cat $FILEPATH |grep '<Context ' |grep -v ROOT |grep -v '<!--' > $tmp2 2> /dev/null
+                #Cleaning path
+                cat $tmp2 |sed 's/.* docBase="//; s/".*//; s#${htdocs}/##; s#${htdocs}##; s#/usr/local/applications/##; s#/usr/local/applications-fut/##; s#/usr/local/web/##' > $tmp
                 while read LINE; do
                   node "$LINE" deployWebApp; node
                 done < $tmp
-              node 
-            fi
+              fi
+	    done
+            node
 
             ## Getting technical configuration
             path="/usr/local/tomcat-instances/${instance}/conf/catalina.properties"
@@ -246,7 +251,7 @@ get_sfr_tomcat_conf()
 
 get_sfr_tomcat_applications()
 {
-  find /usr/local/applications -maxdepth 3 -name "WEB-INF" > $tmp
+  find /usr/local/applications -maxdepth 3 -name "WEB-INF" 2> /dev/null > $tmp
   cat $tmp | grep 'WEB-INF$' | sed 's#/WEB-INF##' | sed 's#.*/##' > $tmp2
   if [ $(cat $tmp2 | wc -l) -ne 0 ]; then
     node Application
