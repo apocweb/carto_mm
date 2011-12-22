@@ -11,6 +11,7 @@ f_app = open(sys.argv[1], 'rb')
 f_cluster = open(sys.argv[2], 'rb')
 fo = open(sys.argv[3], 'wb')
 
+## Getting applications by Tomcat and servers with their Xmx
 servers = {}
 reader = csv.DictReader(f_app)
 for row in reader:
@@ -31,6 +32,7 @@ for row in reader:
 		servers[h][i]['application'].append(a)
 f_app.close()
 
+## Grouping servers (with application and Tomcat) by cluster
 clusters = {}
 reader = csv.DictReader(f_cluster)
 for row in reader:
@@ -44,14 +46,20 @@ for row in reader:
 		clusters[c][h] = servers[h]
 f_cluster.close()
 
+## Creating DOT
 fo.write('graph g {\n')
 for cluster in clusters:
+	## Writing "logical" clusters
 	fo.write('\tsubgraph "cluster-' + cluster + '" {\n')
 	fo.write('\t\tlabel="{}"\n'.format(cluster))
+
+	## Putting servers into cluster
 	for host in clusters[cluster]:
 		fo.write('\t\tsubgraph "cluster-' + host + '" {\n')
 		fo.write('\t\t\tlabel="{}"\n'.format(host))
 		for tomcat in clusters[cluster][host]:
+
+			## Selecting the Tomcat instance status from its Xmx value
 			xmx = clusters[cluster][host][tomcat]['xmx']
 			if xmx == -1:
 				instanceStatus = 'noXmx'
@@ -67,7 +75,11 @@ for cluster in clusters:
                                 instanceStatus = 'highXmx'
 			elif xmx > 2048:
                                 instanceStatus = 'veryHighXmx'
+			
+			## Writting the Tomcat instances for the current server with their status
 			fo.write('\t\t\t"{}-{}" [label="{}",type=tomcatInstance,status={}]\n'.format(host,tomcat,tomcat,instanceStatus))
+
+			## Linking Tomcat instances with their applications
 			for application in clusters[cluster][host][tomcat]['application']:
 				if application != '':
 					fo.write('\t\t\t\t"{}-{}-{}" [label="{}",type=app,status={}]\n'.format(host,tomcat,application,application,instanceStatus))
