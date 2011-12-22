@@ -32,18 +32,26 @@ for row in reader:
 		servers[h][i]['application'].append(a)
 f_app.close()
 
-## Grouping servers (with application and Tomcat) by cluster
+## Grouping servers (with application and Tomcat) by cluster and sub-cluster
 clusters = {}
 reader = csv.DictReader(f_cluster)
 for row in reader:
 	c = row['cluster']
+	sc = row['subcluster']
+	h = row['hostname']
+	if c == None or sc == None or h == None:
+		print 'Error: cluster CSV file not valid'
+		sys.exit(1)
 	if c == '':
 		c = 'Unknown'
+	if sc == '':
+		sc = 'Unknown'
 	if not c in clusters:
-		clusters[c]= {}
-	h = row['hostname']
+		clusters[c] = {}
+	if not sc in clusters[c]:
+		clusters[c][sc] = {}
 	if h in servers:
-		clusters[c][h] = servers[h]
+		clusters[c][sc][h] = servers[h]
 f_cluster.close()
 
 ## Creating DOT
@@ -53,38 +61,46 @@ for cluster in clusters:
 	fo.write('\tsubgraph "cluster-' + cluster + '" {\n')
 	fo.write('\t\tlabel="{}"\n'.format(cluster))
 
-	## Putting servers into cluster
-	for host in clusters[cluster]:
-		fo.write('\t\tsubgraph "cluster-' + host + '" {\n')
-		fo.write('\t\t\tlabel="{}"\n'.format(host))
-		for tomcat in clusters[cluster][host]:
+	## Writing "logical" subclusters
+	for subcluster in clusters[cluster]:
+		if subcluster != 'Unknown':
+			fo.write('\t\tsubgraph "cluster-' + cluster + '-' + subcluster + '" {\n')
+			fo.write('\t\t\tlabel="{}"\n'.format(subcluster))
 
-			## Selecting the Tomcat instance status from its Xmx value
-			xmx = clusters[cluster][host][tomcat]['xmx']
-			if xmx == -1:
-				instanceStatus = 'noXmx'
-			elif xmx == -2:
-				instanceStatus = 'notStarted'
-			else:
-				xmx /= 1000000
-			if xmx >= 0 and xmx <= 512:
-				instanceStatus = 'lowXmx'
-			elif xmx > 512 and xmx <= 1024:
-                                instanceStatus = 'mediumXmx'
-			elif xmx > 1024 and xmx <= 2048:
-                                instanceStatus = 'highXmx'
-			elif xmx > 2048:
-                                instanceStatus = 'veryHighXmx'
-			
-			## Writting the Tomcat instances for the current server with their status
-			fo.write('\t\t\t"{}-{}" [label="{}",type=tomcatInstance,status={}]\n'.format(host,tomcat,tomcat,instanceStatus))
+		## Putting servers into cluster
+		for host in clusters[cluster][subcluster]:
+			fo.write('\t\tsubgraph "cluster-' + host + '" {\n')
+			fo.write('\t\t\tlabel="{}"\n'.format(host))
+			for tomcat in clusters[cluster][subcluster][host]:
 
-			## Linking Tomcat instances with their applications
-			for application in clusters[cluster][host][tomcat]['application']:
-				if application != '':
-					fo.write('\t\t\t\t"{}-{}-{}" [label="{}",type=app,status={}]\n'.format(host,tomcat,application,application,instanceStatus))
-					fo.write('\t\t\t\t"{}-{}"--"{}-{}-{}"\n'.format(host,tomcat,host,tomcat,application))
-		fo.write('\t\t}\n')
+				## Selecting the Tomcat instance status from its Xmx value
+				xmx = clusters[cluster][subcluster][host][tomcat]['xmx']
+				if xmx == -1:
+					instanceStatus = 'noXmx'
+				elif xmx == -2:
+					instanceStatus = 'notStarted'
+				else:
+					xmx /= 1000000
+				if xmx >= 0 and xmx <= 512:
+					instanceStatus = 'lowXmx'
+				elif xmx > 512 and xmx <= 1024:
+        	                        instanceStatus = 'mediumXmx'
+				elif xmx > 1024 and xmx <= 2048:
+                        	        instanceStatus = 'highXmx'
+				elif xmx > 2048:
+        	                        instanceStatus = 'veryHighXmx'
+	
+				## Writting the Tomcat instances for the current server with their status
+				fo.write('\t\t\t"{}-{}" [label="{}",type=tomcatInstance,status={}]\n'.format(host,tomcat,tomcat,instanceStatus))
+
+				## Linking Tomcat instances with their applications
+				for application in clusters[cluster][subcluster][host][tomcat]['application']:
+					if application != '':
+						fo.write('\t\t\t\t"{}-{}-{}" [label="{}",type=app,status={}]\n'.format(host,tomcat,application,application,instanceStatus))
+						fo.write('\t\t\t\t"{}-{}"--"{}-{}-{}"\n'.format(host,tomcat,host,tomcat,application))
+			fo.write('\t\t\t}\n')
+		if subcluster != 'Unknown':
+			fo.write('\t\t}\n')
 	fo.write('\t}\n')
 fo.write('}\n')
 fo.close()
