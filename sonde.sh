@@ -69,9 +69,9 @@ get_tomcat_process()
     while read PROCESS; do
       XMX=$(echo -n "$PROCESS" | grep -o '\-Xmx[0-9]*[kKmM]' | sed 's/\-Xmx//')
       XMS=$(echo -n "$PROCESS" | grep -o '\-Xms[0-9]*[kKmM]' | sed 's/\-Xms//')
-      JVM=$(echo -n "$PROCESS" | grep -o '\-Djvm.route=[a-zA-Z0-9.]*\ '|sed 's/\-Djvm.route=//')
+      JVM=$(echo -n "$PROCESS" | grep -o '\-Djvm.route=[a-zA-Z0-9.-]*\ '|sed 's/\-Djvm.route=//')
       PID=$(echo -n "$PROCESS" | tr -s ' ' | cut -d ' ' -f2)
-      if [ `uname -s` = "Linux" ]; then
+      if [ "$(uname -s)" = "Linux" ]; then
         VmHWM=$(cat /proc/${PID}/status | grep VmHWM | sed 's/VmHWM://' | sed 's/ //g')
         # Le time de demarrage (converti en seconde) par rapport au uptime
         START_TIME=$(($(cat /proc/$PID/stat | sed 's/.*) //' | cut -d ' ' -f20) / 100))
